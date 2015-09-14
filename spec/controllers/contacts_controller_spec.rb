@@ -189,19 +189,68 @@ RSpec.describe ContactsController, :type => :controller do
     end
   end
 
-  describe "PUT update" do
+  describe "PATCH #update" do
 
-    context "with valid attributes" do
-      it "updates the contact in the database"
-      it "redirects to the contact"
-    end
-    
-    context "with invalid attributes" do
-      it "does not update the contact"
-      it "re-renders the #edit template"
+    before :each do
+      @contact = create(:contact,
+        firstname: 'Lawrence',
+        lastname: 'Smith'
+      )
     end
 
+    context "valid attributes" do
+      it "locates the requested @contact" do
+        # allow(contact).to \
+        #   receive(:update).with(valid_attributes.stringify_keys) { true }
+        patch :update, id: @contact,
+          contact: attributes_for(:contact)
+        expect(assigns(:contact)).to eq @contact
+      end
 
+      it "changes @contact's attributes" do
+        patch :update, id: @contact,
+          contact: attributes_for(:contact,
+            firstname: 'Larry',
+            lastname: 'Smith'
+          )
+        @contact.reload
+        expect(@contact.firstname).to eq 'Larry'
+        expect(@contact.lastname).to eq 'Smith'
+      end
+
+      it "redirects to the updated contact" do
+        patch :update, id: @contact, contact: attributes_for(:contact)
+        expect(response).to redirect_to @contact
+      end
+    end
+
+      context "invalid attributes" do
+        # before :each do
+        #   allow(contact).to receive(:update).with(invalid_attributes.stringify_keys) { false }
+        #   patch :update, id: contact, contact: invalid_attributes
+        # end
+
+        it "does not change the contact's attributes" do
+          patch :update, id: @contact,
+            contact: attributes_for(:contact,
+            firstname: 'Larry',
+            lastname: nil)
+          @contact.reload
+          expect(@contact.firstname).to_not eq('Larry')
+          expect(@contact.lastname).to eq('Smith')
+        end
+
+
+        # it "does not change the contact's attributes" do
+        #   expect(assigns(:contact).reload.attributes).to eq contact.attributes
+        # end
+
+        it "re-renders the edit method" do
+          patch :update, id: @contact,
+            contact: attributes_for(:invalid_contact)
+          expect(response).to render_template :edit
+        end
+      end
 
     describe "with valid params" do
       let(:new_attributes) {
@@ -243,10 +292,23 @@ RSpec.describe ContactsController, :type => :controller do
     end
   end
 
-  describe "DELETE destroy" do
+  describe "DELETE #destroy" do
+    
+    before :each do
+      @contact = create(:contact)
+    end
 
-    it "deletes the contact from the database"
-    it "redirects to users#index"
+    it "deletes the contact" do
+      expect{
+        delete :destroy, id: @contact
+      }.to change(Contact,:count).by(-1)
+    end
+
+    it "redirects to contacts#index" do
+      delete :destroy, id: @contact
+      expect(response).to redirect_to contacts_url
+    end
+
 
     it "destroys the requested contact" do
       contact = Contact.create! valid_attributes
@@ -261,5 +323,55 @@ RSpec.describe ContactsController, :type => :controller do
       expect(response).to redirect_to(contacts_url)
     end
   end
+  
+  describe "administrator access" do
+    before :each do
+      user = create(:admin)
+      session[:user_id] = user.id
+    end
 
+    describe 'GET #index' do
+      context 'with params[:letter]' do
+        it "populates an array of contacts starting with the letter" do
+          smith = create(:contact, lastname: 'Smith')
+          jones = create(:contact, lastname: 'Jones')
+          get :index, letter: 'S'
+          expect(assigns(:contacts)).to match_array([smith])
+        end
+    
+        it "renders the :index template" do
+          get :index, letter: 'S'
+          expect(response).to render_template :index
+        end
+      end
+
+      context 'without params[:letter]' do
+        it "populates an array of all contacts" do
+          smith = create(:contact, lastname: 'Smith')
+          jones = create(:contact, lastname: 'Jones')
+          get :index
+          expect(assigns(:contacts)).to match_array([smith, jones])
+        end
+        it "renders the :index template" do
+          get :index
+          expect(response).to render_template :index
+        end
+      end
+    end
+
+    describe 'GET #show' do
+      it "assigns the requested contact to @contact" do
+        contact = create(:contact)
+        get :show, id: contact
+        expect(assigns(:contact)).to eq contact
+      end
+
+      it "renders the :show template" do
+        contact = create(:contact)
+        get :show, id: contact
+        expect(response).to render_template :show
+      end
+
+    end
+  end
 end
