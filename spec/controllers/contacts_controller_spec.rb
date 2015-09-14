@@ -36,38 +36,127 @@ RSpec.describe ContactsController, :type => :controller do
   # ContactsController. Be sure to keep this updated too.
   let(:valid_session) { {} }
 
-  describe "GET index" do
+  describe "GET #index" do
     it "assigns all contacts as @contacts" do
       contact = Contact.create! valid_attributes
       get :index, {}, valid_session
       expect(assigns(:contacts)).to eq([contact])
     end
+
+    context 'with params[:letter]' do
+      it "populates an array of contacts starting with the letter" do
+        smith = create(:contact, lastname: 'Smith')
+        jones = create(:contact, lastname: 'Jones')
+        get :index, letter: 'S'
+        expect(assigns(:contacts)).to match_array([smith])
+      end
+
+      it "renders the :index template" do
+        get :index, letter: 'S'
+        expect(response).to render_template :index
+      end
+    end
+
+    context 'without params[:letter]' do
+      it "populates an array of all contacts" do
+        smith = create(:contact, lastname: 'Smith')
+        jones = create(:contact, lastname: 'Jones')
+        get :index
+        expect(assigns(:contacts)).to match_array([smith, jones])
+      end
+
+      it "renders the :index template" do
+        get :index
+        expect(response).to render_template :index
+      end
+    end
+
   end
 
-  describe "GET show" do
+  describe "GET #show" do
     it "assigns the requested contact as @contact" do
       contact = Contact.create! valid_attributes
       get :show, {:id => contact.to_param}, valid_session
       expect(assigns(:contact)).to eq(contact)
     end
+
+    it "renders the :show template" do
+      contact = create(:contact)
+      get :show,id: contact
+      expect(response).to render_template :show
+    end
+
   end
 
-  describe "GET new" do
+  describe "GET #new" do
     it "assigns a new contact as @contact" do
       get :new, {}, valid_session
       expect(assigns(:contact)).to be_a_new(Contact)
     end
+
+    it "renders the :new template" do
+      get :new
+      expect(response).to render_template :new
+    end
+
   end
 
-  describe "GET edit" do
+  describe "GET #edit" do
     it "assigns the requested contact as @contact" do
       contact = Contact.create! valid_attributes
       get :edit, {:id => contact.to_param}, valid_session
       expect(assigns(:contact)).to eq(contact)
     end
+
+    it "renders the :edit template" do
+      contact = create(:contact)
+      get :edit,id: contact
+      expect(response).to render_template :edit
+    end
+
   end
 
-  describe "POST create" do
+  describe "POST #create" do
+
+    before :each do
+      @phones = [
+        attributes_for(:phone),
+        attributes_for(:phone),
+        attributes_for(:phone)
+      ]
+    end
+
+    context "with valid attributes" do
+      it "saves the new contact in the database" do
+        expect{
+          post :create, contact: attributes_for(:contact,
+            phones_attributes: @phones)
+        }.to change(Contact, :count).by(1)
+      end
+
+      it "redirects to contacts#show" do
+        post :create,
+          contact: attributes_for(:contact,
+            phones_attributes: @phones)
+        expect(response).to redirect_to contact_path(assigns[:contact])
+      end
+    end
+
+    context "with invalid attributes" do
+      it "does not save the new contact in the database" do
+        expect{
+          post :create,
+            contact: attributes_for(:invalid_contact)
+        }.not_to change(Contact, :count)
+      end
+
+      it "re-renders the :new template" do
+        post :create,
+          contact: attributes_for(:invalid_contact)
+        expect(response).to render_template :new
+      end
+    end
+
     describe "with valid params" do
       it "creates a new Contact" do
         expect {
@@ -101,6 +190,19 @@ RSpec.describe ContactsController, :type => :controller do
   end
 
   describe "PUT update" do
+
+    context "with valid attributes" do
+      it "updates the contact in the database"
+      it "redirects to the contact"
+    end
+    
+    context "with invalid attributes" do
+      it "does not update the contact"
+      it "re-renders the #edit template"
+    end
+
+
+
     describe "with valid params" do
       let(:new_attributes) {
         skip("Add a hash of attributes valid for your model")
@@ -142,6 +244,10 @@ RSpec.describe ContactsController, :type => :controller do
   end
 
   describe "DELETE destroy" do
+
+    it "deletes the contact from the database"
+    it "redirects to users#index"
+
     it "destroys the requested contact" do
       contact = Contact.create! valid_attributes
       expect {
